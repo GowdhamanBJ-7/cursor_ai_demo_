@@ -18,10 +18,29 @@ def _bootstrap_project_path() -> None:
     of `pipeline/` explicitly so `config` and `src` imports resolve reliably.
     """
 
-    project_root = Path(__file__).resolve().parent.parent
-    root_str = str(project_root)
-    if root_str not in sys.path:
-        sys.path.insert(0, root_str)
+    candidate_roots: list[Path] = []
+
+    # Normal script execution path.
+    file_from_globals = globals().get("__file__")
+    if file_from_globals:
+        candidate_roots.append(Path(file_from_globals).resolve().parent.parent)
+
+    # Databricks may execute via exec(...), where __file__ is missing.
+    # In that case, function code metadata still carries the source filename.
+    code_filename = _bootstrap_project_path.__code__.co_filename
+    if code_filename:
+        candidate_roots.append(Path(code_filename).resolve().parent.parent)
+
+    # Fallbacks: working directory and its parent.
+    cwd = Path.cwd().resolve()
+    candidate_roots.extend([cwd, cwd.parent])
+
+    for root in candidate_roots:
+        if (root / "config").exists() and (root / "src").exists():
+            root_str = str(root)
+            if root_str not in sys.path:
+                sys.path.insert(0, root_str)
+            return
 
 
 _bootstrap_project_path()
