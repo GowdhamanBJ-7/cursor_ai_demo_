@@ -11,16 +11,13 @@ resources:
           spark_python_task:
             python_file: pipeline/etl_pipeline.py
 
-          # ✅ REQUIRED for serverless
           environment_key: default
 
-      # ✅ Define environment (serverless)
       environments:
         - environment_key: default
           spec:
             client: "2"
 
-      # ✅ Scheduling
       schedule:
         quartz_cron_expression: "0 0 6 * * ?"
         timezone_id: "Asia/Kolkata"
