@@ -4,9 +4,27 @@ import argparse
 import logging
 import os
 import sys
+from pathlib import Path
 from typing import Optional
 
 from pyspark.sql import SparkSession
+
+def _bootstrap_project_path() -> None:
+    """
+    Ensure bundle project root is importable in Databricks jobs.
+
+    When spark_python_task executes `pipeline/etl_pipeline.py`, the working
+    directory may not include the bundle root on sys.path. We add the parent
+    of `pipeline/` explicitly so `config` and `src` imports resolve reliably.
+    """
+
+    project_root = Path(__file__).resolve().parent.parent
+    root_str = str(project_root)
+    if root_str not in sys.path:
+        sys.path.insert(0, root_str)
+
+
+_bootstrap_project_path()
 
 from config.databricks_config import PipelineConfig
 from src.ingestion.read_data import generate_bronze_nyc_taxi_df
