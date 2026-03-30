@@ -107,7 +107,6 @@ def transform_to_gold_trips_by_pickup_zone(silver_df: DataFrame) -> DataFrame:
                     "ZoneName"
                 ),
             )
-            .cache()
         )
 
         df = (
