@@ -6,16 +6,16 @@ from datetime import datetime, timedelta
 from typing import List
 
 from pyspark.sql import DataFrame, Row, SparkSession
-from pyspark.sql import functions as F
 
 from config.schema_config import nyc_taxi_bronze_schema
 
 logger = logging.getLogger(__name__)
 
 
-def _generate_synthetic_rows(num_rows: int) -> List[Row]:
+def _generate_synthetic_rows(num_rows: int, source_name: str) -> List[Row]:
     random.seed(42)
     base = datetime(2026, 1, 1, 0, 0, 0)
+    ingestion_ts = datetime.utcnow()
     rows: List[Row] = []
 
     for i in range(num_rows):
@@ -41,6 +41,8 @@ def _generate_synthetic_rows(num_rows: int) -> List[Row]:
                 fare_amount=fare_amount if random.random() > 0.02 else None,
                 PULocationID=pu_loc if random.random() > 0.01 else None,
                 DOLocationID=do_loc if random.random() > 0.01 else None,
+                ingestion_time=ingestion_ts,
+                source_file=source_name,
             )
         )
 
@@ -63,26 +65,9 @@ def generate_bronze_nyc_taxi_df(
         logger.info("Bronze: generating %s synthetic NYC Taxi rows", num_rows)
         schema = nyc_taxi_bronze_schema()
 
-        base_rows = _generate_synthetic_rows(num_rows=num_rows)
-        df = spark.createDataFrame(base_rows)
-
-        df = (
-            df.select(
-                F.col("VendorID").cast("int").alias("VendorID"),
-                F.col("pickup_datetime").cast("timestamp").alias("pickup_datetime"),
-                F.col("dropoff_datetime").cast("timestamp").alias("dropoff_datetime"),
-                F.col("passenger_count").cast("int").alias("passenger_count"),
-                F.col("trip_distance").cast("double").alias("trip_distance"),
-                F.col("fare_amount").cast("double").alias("fare_amount"),
-                F.col("PULocationID").cast("int").alias("PULocationID"),
-                F.col("DOLocationID").cast("int").alias("DOLocationID"),
-            )
-            .withColumn("ingestion_time", F.current_timestamp())
-            .withColumn("source_file", F.lit(source_name))
-        )
-
-        # enforce final schema order and nullability expectations
-        df = spark.createDataFrame(df.rdd, schema=schema)
+        rows = _generate_synthetic_rows(num_rows=num_rows, source_name=source_name)
+        # Serverless-safe: enforce schema directly at DataFrame creation (no RDD usage).
+        df = spark.createDataFrame(rows, schema=schema)
         return df
     except Exception:
         logger.exception("Bronze: failed to generate synthetic NYC Taxi dataframe")
