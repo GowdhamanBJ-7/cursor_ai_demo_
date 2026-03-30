@@ -23,6 +23,7 @@ resources:
       tasks:
         - task_key: etl
           description: "Run end-to-end ETL pipeline"
+          max_retries: 0
           spark_python_task:
             python_file: pipeline/etl_pipeline.py
             parameters:
@@ -33,14 +34,6 @@ resources:
               - --rows
               - "500"
           compute: serverless
-          environment_key: default
-      environments:
-        - environment_key: default
-          spec:
-            client: "1"
-            dependencies:
-              - pip:
-                  - pyspark
 
 targets:
   dev:
