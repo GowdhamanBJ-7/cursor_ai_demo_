@@ -1,50 +1,38 @@
 bundle:
   name: nyc-taxi-medallion
 
-workspace:
-  root_path: /Workspace/Users/${workspace.current_user.userName}/bundles/${bundle.name}/${bundle.target}
-
-variables:
-  catalog:
-    description: Unity Catalog catalog (must already exist)
-    default: main
-  schema:
-    description: Unity Catalog schema for tables (created if missing)
-    default: taxi_medallion
-
 resources:
   jobs:
     nyc_taxi_medallion_etl:
-      name: "[${bundle.target}] nyc_taxi_medallion_etl"
-      description: "Serverless Bronze→Silver→Gold ETL (synthetic NYC Taxi) writing to Unity Catalog Delta tables."
-      schedule:
-        quartz_cron_expression: "0 0 6 * * ?"
-        timezone_id: "Asia/Kolkata"
+      name: nyc_taxi_medallion_pipeline
+
       tasks:
         - task_key: etl
-          description: "Run end-to-end ETL pipeline"
-          max_retries: 0
-          environment_key: default
           spark_python_task:
             python_file: pipeline/etl_pipeline.py
-            parameters:
-              - --catalog
-              - ${var.catalog}
-              - --schema
-              - ${var.schema}
-              - --rows
-              - "500"
+
+          # ✅ REQUIRED for serverless
+          environment_key: default
+
+      # ✅ Define environment (serverless)
       environments:
         - environment_key: default
           spec:
-            dependencies: []
+            client: "2"
+
+      # ✅ Scheduling
+      schedule:
+        quartz_cron_expression: "0 0 6 * * ?"
+        timezone_id: "Asia/Kolkata"
 
 targets:
   dev:
+    mode: development
     default: true
-    variables:
-      schema: taxi_medallion_dev
-  prod:
-    variables:
-      schema: taxi_medallion_prod
+    workspace:
+      root_path: /Workspace/Users/${workspace.current_user.userName}/bundles/${bundle.name}/dev
 
+  prod:
+    mode: production
+    workspace:
+      root_path: /Workspace/Users/${workspace.current_user.userName}/bundles/${bundle.name}/prod
