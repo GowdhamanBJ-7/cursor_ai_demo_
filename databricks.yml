@@ -4,7 +4,7 @@ bundle:
 resources:
   jobs:
     nyc_taxi_medallion_etl:
-      name: nyc_taxi_medallion_etl_job
+      name: job_schedule
 
       tasks:
         - task_key: etl
